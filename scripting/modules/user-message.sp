@@ -48,11 +48,9 @@ static void SendMessageFromSpectator(int client, BfRead buffer) {
 
 static void FillTargets(int[] targets, int& targetsAmount) {
     for (int target = 1; target <= MaxClients; target++) {
-        if (!IsClientInGame(target) || UseCase_IsSpectator(target)) {
-            continue;
+        if (IsClientInGame(target) && IsPlayerAlive(target)) {
+            targets[targetsAmount++] = target;
         }
-
-        targets[targetsAmount++] = target;
     }
 }
 
