@@ -28,7 +28,7 @@ public Action UserMessage_OnSayText(UserMsg id, BfRead buffer, const int[] playe
     }
 
     if (UseCase_IsSpectator(client)) {
-        SendMessageFromSpectator(client, buffer);
+        SendMessage(client, buffer, TEAM_ONLY_NO);
 
         return Plugin_Continue;
     }
@@ -36,19 +36,24 @@ public Action UserMessage_OnSayText(UserMsg id, BfRead buffer, const int[] playe
     if (IsPlayerAlive(client)) {
         return Plugin_Continue;
     }
-    // TODO
-    PrintToServer("[DEBUG] Dead: %d", client);
+
+    SendMessage(client, buffer, TEAM_ONLY_YES);
 
     return Plugin_Continue;
 }
 
-static void SendMessageFromSpectator(int client, BfRead buffer) {
+static void SendMessage(int client, BfRead buffer, bool teamOnly) {
     int targets[MAXPLAYERS + 1];
     int targetsAmount = 0;
     int bytes[MESSAGE_SIZE];
     int bytesAmount = 0;
 
-    FillTargets(targets, targetsAmount);
+    FillTargetsInGame(targets, targetsAmount);
+    FillTargetsOnlyAlive(targets, targetsAmount);
+
+    if (teamOnly) {
+        FillTargetsTeamOnly(client, targets, targetsAmount);
+    }
 
     if (targetsAmount == 0) {
         return;
@@ -58,12 +63,42 @@ static void SendMessageFromSpectator(int client, BfRead buffer) {
     Frame_PrintMessage(targets, targetsAmount, bytes, bytesAmount);
 }
 
-static void FillTargets(int[] targets, int& targetsAmount) {
+static void FillTargetsInGame(int[] targets, int& targetsAmount) {
     for (int target = 1; target <= MaxClients; target++) {
-        if (IsClientInGame(target) && IsPlayerAlive(target)) {
+        if (IsClientInGame(target)) {
             targets[targetsAmount++] = target;
         }
     }
+}
+
+static void FillTargetsOnlyAlive(int[] targets, int& targetsAmount) {
+    int freeIndex = 0;
+
+    for (int i = 0; i < targetsAmount; i++) {
+        int target = targets[i];
+
+        if (IsPlayerAlive(target)) {
+            targets[freeIndex++] = target;
+        }
+    }
+
+    targetsAmount = freeIndex;
+}
+
+static void FillTargetsTeamOnly(int client, int[] targets, int& targetsAmount) {
+    int clientTeam = GetClientTeam(client);
+    int freeIndex = 0;
+
+    for (int i = 0; i < targetsAmount; i++) {
+        int target = targets[i];
+        int targetTeam = GetClientTeam(target);
+
+        if (clientTeam == targetTeam) {
+            targets[freeIndex++] = target;
+        }
+    }
+
+    targetsAmount = freeIndex;
 }
 
 static void FillBytes(int client, BfRead buffer, int[] bytes, int& bytesAmount) {

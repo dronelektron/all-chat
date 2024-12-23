@@ -7,3 +7,6 @@
 #define MESSAGE_SAY_TEXT "SayText"
 
 #define ENABLED_YES true
+
+#define TEAM_ONLY_YES true
+#define TEAM_ONLY_NO false
