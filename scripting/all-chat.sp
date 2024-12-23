@@ -3,6 +3,7 @@
 #include "all-chat/use-case"
 #include "all-chat/user-message"
 
+#include "modules/console-variable.sp"
 #include "modules/frame.sp"
 #include "modules/use-case.sp"
 #include "modules/user-message.sp"
@@ -16,5 +17,7 @@ public Plugin myinfo = {
 };
 
 public void OnPluginStart() {
-    UserMessage_HookSayText();
+    Variable_Create();
+    UserMessage_SetSayText(ENABLED_YES);
+    AutoExecConfig(_, "all-chat");
 }

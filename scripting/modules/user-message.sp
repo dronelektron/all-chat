@@ -1,7 +1,19 @@
-void UserMessage_HookSayText() {
+static bool g_sayTextEnabled = false;
+
+void UserMessage_SetSayText(bool enabled) {
+    if (enabled == g_sayTextEnabled) {
+        return;
+    }
+
+    g_sayTextEnabled = enabled;
+
     UserMsg id = GetUserMessageId(MESSAGE_SAY_TEXT);
 
-    HookUserMessage(id, UserMessage_OnSayText);
+    if (enabled) {
+        HookUserMessage(id, UserMessage_OnSayText);
+    } else {
+        UnhookUserMessage(id, UserMessage_OnSayText);
+    }
 }
 
 public Action UserMessage_OnSayText(UserMsg id, BfRead buffer, const int[] players, int playersAmount, bool reliable, bool init) {

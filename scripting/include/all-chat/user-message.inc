@@ -5,3 +5,5 @@
 
 #define MESSAGE_SIZE 256
 #define MESSAGE_SAY_TEXT "SayText"
+
+#define ENABLED_YES true
