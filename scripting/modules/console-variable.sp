@@ -8,5 +8,5 @@ void Variable_Create() {
 static void OnPluginEnabled(ConVar variable, const char[] oldValue, const char[] newValue) {
     bool enabled = variable.BoolValue;
 
-    UserMessage_SetSayText(enabled);
+    UserMessage_SayText_Toggle(enabled);
 }
