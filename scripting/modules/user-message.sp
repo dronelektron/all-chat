@@ -1,6 +1,11 @@
 static bool g_sayTextEnabled = false;
+static bool g_isTeamChat = false;
 
-void UserMessage_SetSayText(bool enabled) {
+void UserMessage_SetTeamChat(bool isTeamChat) {
+    g_isTeamChat = isTeamChat;
+}
+
+void UserMessage_SayText_Toggle(bool enabled) {
     if (enabled == g_sayTextEnabled) {
         return;
     }
@@ -10,74 +15,79 @@ void UserMessage_SetSayText(bool enabled) {
     UserMsg id = GetUserMessageId(MESSAGE_SAY_TEXT);
 
     if (enabled) {
-        HookUserMessage(id, UserMessage_OnSayText);
+        HookUserMessage(id, OnSayText);
     } else {
-        UnhookUserMessage(id, UserMessage_OnSayText);
+        UnhookUserMessage(id, OnSayText);
     }
 }
 
-public Action UserMessage_OnSayText(UserMsg id, BfRead buffer, const int[] players, int playersAmount, bool reliable, bool init) {
+static Action OnSayText(UserMsg id, BfRead buffer, const int[] players, int playersAmount, bool reliable, bool init) {
     int client = buffer.ReadByte();
 
-    if (client != players[0]) {
+    if (IsRecipient(client, players) || IsConsole(client) || IsPlayerAlive(client)) {
         return Plugin_Continue;
     }
 
-    if (UseCase_IsConsole(client)) {
-        return Plugin_Continue;
+    if (IsSpectator(client)) {
+        SendMessage(client, buffer, TEAM_CHAT_NO);
+    } else {
+        SendMessage(client, buffer, g_isTeamChat);
     }
-
-    if (UseCase_IsSpectator(client)) {
-        SendMessage(client, buffer, TEAM_ONLY_NO);
-
-        return Plugin_Continue;
-    }
-
-    if (IsPlayerAlive(client)) {
-        return Plugin_Continue;
-    }
-
-    SendMessage(client, buffer, TEAM_ONLY_YES);
 
     return Plugin_Continue;
 }
 
-static void SendMessage(int client, BfRead buffer, bool teamOnly) {
+static bool IsRecipient(int client, const int[] players) {
+    return client != players[0];
+}
+
+static bool IsConsole(int client) {
+    return client == CONSOLE;
+}
+
+static bool IsSpectator(int client) {
+    int team = GetClientTeam(client);
+
+    return team < TEAM_ALLIES;
+}
+
+static void SendMessage(int client, BfRead buffer, bool teamChat) {
     int targets[MAXPLAYERS + 1];
     int targetsAmount = 0;
-    int bytes[MESSAGE_SIZE];
-    int bytesAmount = 0;
 
-    FillTargetsInGame(targets, targetsAmount);
-    FillTargetsOnlyAlive(targets, targetsAmount);
+    FillAllTargets(targets, targetsAmount);
+    FillAliveTargets(targets, targetsAmount);
 
-    if (teamOnly) {
-        FillTargetsTeamOnly(client, targets, targetsAmount);
+    if (teamChat) {
+        FillTeamTargets(client, targets, targetsAmount);
     }
 
     if (targetsAmount == 0) {
         return;
     }
 
+    int bytes[MESSAGE_SIZE];
+    int bytesAmount = 0;
+
     FillBytes(client, buffer, bytes, bytesAmount);
     Frame_PrintMessage(targets, targetsAmount, bytes, bytesAmount);
 }
 
-static void FillTargetsInGame(int[] targets, int& targetsAmount) {
+static void FillAllTargets(int[] targets, int& targetsAmount) {
+    targetsAmount = 0;
+
     for (int target = 1; target <= MaxClients; target++) {
-        if (IsClientInGame(target)) {
-            targets[targetsAmount++] = target;
-        }
+        targets[targetsAmount++] = target;
     }
 }
 
-static void FillTargetsOnlyAlive(int[] targets, int& targetsAmount) {
+static void FillAliveTargets(int[] targets, int& targetsAmount) {
     int freeIndex = 0;
 
     for (int i = 0; i < targetsAmount; i++) {
         int target = targets[i];
 
-        if (IsPlayerAlive(target)) {
+        if (IsClientInGame(target) && IsPlayerAlive(target)) {
             targets[freeIndex++] = target;
         }
     }
@@ -85,9 +95,9 @@ static void FillTargetsOnlyAlive(int[] targets, int& targetsAmount) {
     targetsAmount = freeIndex;
 }
 
-static void FillTargetsTeamOnly(int client, int[] targets, int& targetsAmount) {
-    int clientTeam = GetClientTeam(client);
+static void FillTeamTargets(int client, int[] targets, int& targetsAmount) {
     int freeIndex = 0;
+    int clientTeam = GetClientTeam(client);
 
     for (int i = 0; i < targetsAmount; i++) {
         int target = targets[i];
